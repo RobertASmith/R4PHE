@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>Chapter 6 Microsimulation Model | Data Science for Public Health Economic Evaluation</title>
   <meta name="description" content="This is a teaching tool in progress" />
-  <meta name="generator" content="bookdown 0.19 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.20 and GitBook 2.6.7" />
 
   <meta property="og:title" content="Chapter 6 Microsimulation Model | Data Science for Public Health Economic Evaluation" />
   <meta property="og:type" content="book" />
@@ -23,8 +23,8 @@
 
 <meta name="author" content="Robert Smith" />
 
+<meta name="date" content="2020-07-04" />
 
-<meta name="date" content="2020-06-26" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -50,6 +50,7 @@
 
 
 
+<script src="libs/accessible-code-block-0.0.1/empty-anchor.js"></script>
 
 
 <style type="text/css">
@@ -192,6 +193,26 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 </ul></li>
 <li class="chapter" data-level="7.4" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#discussion"><i class="fa fa-check"></i><b>7.4</b> Discussion</a></li>
 <li class="chapter" data-level="7.5" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#conclusion"><i class="fa fa-check"></i><b>7.5</b> Conclusion</a></li>
+<li class="chapter" data-level="7.6" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#creating-a-downloadable-report-from-shiny-serdar-korur"><i class="fa fa-check"></i><b>7.6</b> Creating a downloadable report from Shiny (Serdar Korur)</a><ul>
+<li class="chapter" data-level="7.6.1" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#add-create-a-report-option-to-the-sick-sicker-app"><i class="fa fa-check"></i><b>7.6.1</b> Add create a report option to the Sick Sicker App</a></li>
+<li class="chapter" data-level="7.6.2" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#importing-as-pdf-or-word"><i class="fa fa-check"></i><b>7.6.2</b> Importing as PDF or Word</a></li>
+<li class="chapter" data-level="7.6.3" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#sending-scheduled-automated-reports-to-be-emailed-to-you-from-shiny-apps"><i class="fa fa-check"></i><b>7.6.3</b> Sending Scheduled Automated reports to be emailed to you from Shiny apps</a></li>
+</ul></li>
+<li class="chapter" data-level="7.7" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#modify-the-appearance-of-shiny-apps"><i class="fa fa-check"></i><b>7.7</b> Modify the appearance of Shiny apps</a><ul>
+<li class="chapter" data-level="7.7.1" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#basic-introduction-to-html-and-css"><i class="fa fa-check"></i><b>7.7.1</b> Basic introduction to HTML and CSS</a></li>
+<li class="chapter" data-level="7.7.2" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#adding-html-css-styles-into-an-r-shiny-app"><i class="fa fa-check"></i><b>7.7.2</b> Adding HTML &amp; CSS Styles into an R Shiny App</a></li>
+<li class="chapter" data-level="7.7.3" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#adding-raw-html-to-shiny"><i class="fa fa-check"></i><b>7.7.3</b> Adding Raw HTML to Shiny</a></li>
+<li class="chapter" data-level="7.7.4" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#section"><i class="fa fa-check"></i><b>7.7.4</b> </a></li>
+<li class="chapter" data-level="7.7.5" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#shiny-packages-to-modify-the-themes"><i class="fa fa-check"></i><b>7.7.5</b> Shiny packages to modify the themes</a></li>
+</ul></li>
+<li class="chapter" data-level="7.8" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#how-to-wrap-up-shiny-apps-using-electron"><i class="fa fa-check"></i><b>7.8</b> How to wrap up Shiny apps using electron</a></li>
+<li class="chapter" data-level="7.9" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#sharing-a-shiny-app-with-docker"><i class="fa fa-check"></i><b>7.9</b> Sharing a Shiny app with Docker</a><ul>
+<li class="chapter" data-level="7.9.1" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#how-to-dockerize-your-shinyapp"><i class="fa fa-check"></i><b>7.9.1</b> How to Dockerize your shinyApp?</a></li>
+<li class="chapter" data-level="7.9.2" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#example-dockerize-the-sick-sicker-app"><i class="fa fa-check"></i><b>7.9.2</b> Example: Dockerize the Sick Sicker app</a></li>
+<li class="chapter" data-level="7.9.3" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#saving-docker-image"><i class="fa fa-check"></i><b>7.9.3</b> Saving Docker image</a></li>
+<li class="chapter" data-level="7.9.4" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#how-to-share-docker-images-via-docker-hub"><i class="fa fa-check"></i><b>7.9.4</b> How to share Docker Images via Docker hub</a></li>
+<li class="chapter" data-level="7.9.5" data-path="user-interfaces-for-health-economic-evaluation.html"><a href="user-interfaces-for-health-economic-evaluation.html#other-useful-shiny-packages"><i class="fa fa-check"></i><b>7.9.5</b> Other Useful Shiny packages</a></li>
+</ul></li>
 </ul></li>
 <li class="chapter" data-level="8" data-path="collaboration-repoducability.html"><a href="collaboration-repoducability.html"><i class="fa fa-check"></i><b>8</b> Collaboration &amp; Repoducability</a><ul>
 <li class="chapter" data-level="8.1" data-path="collaboration-repoducability.html"><a href="collaboration-repoducability.html#git-github"><i class="fa fa-check"></i><b>8.1</b> Git &amp; GitHub</a><ul>

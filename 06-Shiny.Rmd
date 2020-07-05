@@ -473,4 +473,607 @@ There are several challenges that exist with the movement toward script based mo
 
 The creation of web application user interfaces for health economic models constructed in high level programming languages should improve their usability, allowing stakeholders and third parties with no programming knowledge to conduct their own sensitivity analysis remotely. This tutorial provides a reference for those attempting to create a user interface for a health economic model created in R. Further work is necessary to better understand how to design interfaces which best meet the needs of different decision makers. 
 
+## Creating a downloadable report from Shiny (Serdar Korur)
 
+After making an analysis on a Shiny app users may want to create a report of their results with all the parameter values they used when creating their Health Economic model.
+
+To add this functionality to a Shiny app we need to add **a download button** to the Shiny UI and **a downloadhandler()** at the server side. downloadhandler() on the server side will execute knitting on demand a separate rmd document. 
+
+We will also need to create a separate rmd file, we may call it report.Rmd. In this file, we can include the relevant parameters which we want to be written on the report. For example, the model specific parameters users specified after testing their own assumptions and creating their models. 
+
+
+Let's go through an example.
+
+### Add create a report option to the Sick Sicker App
+
+#### Modify the UI and Server in the app.R file
+
+First, we can start with modifying the app.R file. We can define a download button at the UI and add a downloadhandler() at server side as follows:
+
+```{r, eval=FALSE}
+#---  TO INSERT in the UI in the app.R  ---#
+# Create a button to request a report output, this can be inserted after the action button in the app.R of Sick Sicker 
+   downloadButton("myreport", "Create a Report")
+```
+
+
+```{r, eval=FALSE}
+#---  TO INSERT BEFORE THE END OF THE SERVER in the app.R  ---#
+
+# Name of the output should match the Id (first) parameter of the download button 
+# e.g myreport here.
+  output$myreport <- downloadHandler( 
+    # For a PDF output, modify the extension to ".pdf"
+    filename = "report.html",
+    content = function(file) {
+      # Create a function which will copy the report in a temporary directory before processing it.
+      tempReport <- file.path(tempdir(), "report.Rmd") # tempdir() function creates a temporary directory
+      file.copy("report.Rmd", tempReport, overwrite = TRUE) # Copies the report.Rmd to the temporary directory
+      
+      # Set up parameters to be written to the rmd document in a list
+      # Here the user modified parameters are Cost of Treatment, 
+      # number of simulations to run and the initial age 
+      params <- list(n = input$SI_c_Trt, m = input$SI_n_sim, x =input$SI_n_age_init)
+      
+      # To knit the report.Rmd with `params` list, and eval it in a
+      # child of the global environment (this isolates the code in the document
+      # from the code in this app).
+      # This provides better code isolation and makes things easier to debug.
+      rmarkdown::render(tempReport, output_file = file,
+                        params = params,
+                        envir = new.env(parent = globalenv())
+      )
+    }  
+)
+```
+
+
+
+In the next step, We will pass the parameters specified above by the`params` list to the Rmd document.
+
+#### Setting up the report.Rmd
+When we run the modified app.R it will generate the list `params` at the server side and now we have to tell the rmd document how to access those variables. Parameters that will be passed from Shiny should be specified in the YAML header (top section between three horizontal lines `---` of the rmd document and should be with two indentation from the beginning of a new line and initally set to `NA` as below.
+
+```{r, eval=FALSE}
+---
+title: "Dynamic report"
+output: html_document
+params:
+  n: NA
+  m: NA
+  x: NA
+---
+```
+
+Those `params` values will be updated after the user changes the corresponding variables in the shiny app and run a model. 
+
+We can create a table with the model parameter values by using an inline R code. In this case, Parameters should be wrapped the inside an ``` `r ` ``` expression.
+
+Before knitting:
+
+```{r eval=FALSE}
+|  Parameter  | Set value 
+|-------------|-----------
+| Cost of treatment | `r params$n` 
+| Number of PSA runs | `r params$m`
+| Initial age | `r params$x`
+
+```
+
+
+After knitting:
+
+|  Parameter  | Set value 
+|-------------|-----------
+| Cost of treatment | `params$n`
+| Number of PSA runs | `params$m`
+| Initial age | `params$x`
+
+Now, after setting up which user input values to include in the report, we need to include the resulting plots and tables.
+
+When users enter their parameters and click Run in the Sick Sicker App `f_wrapper` function will create the model `df_model_res`. To be able to pass the same model to the report.Rmd we can add an extra step in the app.R so a local copy of the model is saved. 
+
+This pre-saved model will be used to render the QALY table and plot in the report. 
+
+**Add an extra step in the app.R:**
+
+```{r, eval=FALSE}
+# To insert in the app.R after df_model_res
+# Create a reactive variable which will be updated when a user clicks run button
+ df_model_save <- eventReactive(input$run_model, { df_model_res})
+# The model will be saved in the same folder as the app
+ saveRDS(df_model_save(),"df_model_res.rds")
+```
+
+With the above code the model will be saved whenever users click run model. We can utilize this saved model in report.rmd to create the QALY table and the cost effectiveness plot.
+
+**Create the QALY table:** 
+
+```{r, eval=FALSE}
+library(magrittr)
+# Add to report.rmd
+# Read the saved PSA model, to create the table and the plot 
+df_model_res <- readRDS("~/workingdirectory/rforhealthcare/sicksicker/df_model_res.rds")
+
+df_res_table <- data.frame( # create dataframe
+                     
+                     Option =  c("Treatment","No Treatment"), 
+                     
+                     QALYs  =  c(mean(df_model_res$QALY_Trt),mean(df_model_res$QALY_NoTrt)),
+                     
+                     Costs  =  c(mean(df_model_res$Cost_Trt),mean(df_model_res$Cost_NoTrt)),
+                     
+                     Inc.QALYs = c(mean(df_model_res$QALY_Trt) - mean(df_model_res$QALY_NoTrt),NA),
+                     
+                     Inc.Costs = c(mean(df_model_res$Cost_Trt) - mean(df_model_res$Cost_NoTrt),NA),
+                     
+                     ICER = c(mean(df_model_res$ICER),NA)
+                  )
+# kableExtra package produces a better table format.
+library(kableExtra)
+
+kable(df_res_table) %>%
+kable_styling(bootstrap_options = c("striped", "hover"))  # Print the resulting table
+```
+
+**To create the cost effectiveness plot:**
+
+```{r, eval=FALSE}
+# create cost effectiveness plot
+
+df_model_res$inc_C <- df_model_res$Cost_Trt - df_model_res$Cost_NoTrt
+                   df_model_res$inc_Q <- df_model_res$QALY_Trt - df_model_res$QALY_NoTrt
+                   
+                   plot(x = df_model_res$inc_Q, # x axis incremental QALYS
+                        y = df_model_res$inc_C, # y axis incremental Costs
+                        # label axes
+                        xlab = "Incremental QALYs", 
+                        ylab = "Incremental Costs", 
+                        
+                        # set xlimits and ylimits for plot.
+                        xlim = c(min(df_model_res$inc_Q,df_model_res$inc_Q*-1),
+                                 max(df_model_res$inc_Q,df_model_res$inc_Q*-1)),
+                        ylim = c(min(df_model_res$inc_C,df_model_res$inc_C*-1),
+                                 max(df_model_res$inc_C,df_model_res$inc_C*-1)),
+                        # include y and y axis lines.
+                        abline(h = 0,v=0)
+                   )
+```
+
+The created HTML file will already include all plots and images embedded directly. There is no additional step e.g. for handling separate image files. 
+
+You can find the modified app.R and the report.Rmd here (TO be done: add a github link)
+
+Now, let's have a look at the final report.
+
+![Dynamic Report](_bookdown_files/bookdown-demo_files/figures-shiny/dynamic_report.PNG)
+
+Additional parameters to be written on the report can be added to the YAML header of the report.rmd.  For example, you can include the time when the report is created. Use !r before an R expression to pass it as a parameter to the report (e.g date: !r Sys.Date()).
+
+
+### Importing as PDF or Word
+
+Change the filename argument of downloadHandler() to "report.pdf" or "report.doc. Use output: pdf_document or output: word_document respectively in the YAML header of the Rmd file to get an pdf or word output. Creating a pdf report will also require `pdflatex` to be installed on your system.
+
+The rmarkdown::render() function has many options to control the processing and output. See the rmarkdown website to learn more <https://rmarkdown.rstudio.com/>.
+
+### Sending Scheduled Automated reports to be emailed to you from Shiny apps
+
+Can be added.
+
+
+## Modify the appearance of Shiny apps
+
+Shiny is a web application, thus to be interpreted by web browsers it uses the languages of the web, such as HTML (HyperText Markup Language) which is the basic building block of Web pages, CSS (Cascading Styles Sheets) which adds a wide variety of formating options to style HTML elements and Javascript which allows for dynamic options of a web page such as user interactivity.  
+
+Shiny UI Code is a set of R functions that output an HTML document along with the CSS and Javascript code that is included. 
+
+Thus, understanding some basics of HTML, CSS and Javascript will allow us to customize our apps.
+
+
+### Basic introduction to HTML and CSS 
+
+An HTML document is a collection of tags which is interpreted by the web browser step by step.
+
+A minimal HTML structure may be defined as follows:
+
+```{r, eval=FALSE}
+<!DOCTYPE HTML> # Declaring that the document is an HTML document
+<html>   # Wraps the entire file
+
+  <head>  # Wraps the meta info
+  
+      <!-- head content here -->
+  
+  </head>
+  
+  
+  <body> # Wraps the content of the page
+  
+     <p> Hello World! </p>  # paragraph tag
+  
+  </body>
+
+</html>
+```
+
+The head part `<head>...</head>` can contain the dependencies like styles and Javascript as well as meta data (e.g. information about the page or google analytics info) and does not appear on the page visually. 
+`<body>...</body>` contains the main content which is displayed on the screen.
+
+Each of the `<.>` is called a tag. Text are wrapped between an opening and closing tag.
+The opening and closing tag together forms an element. For example, `<p>.</p>` is called the "p element".
+
+
+#### Tag attributes
+
+HTML Tags can also include attributes. Attributes are name/value pair and the general syntax is
+
+```{r, eval=FALSE}
+<p name="value"> ... </p>
+```
+
+The two most common attributes are class and id attributes. Class names does not have be unique and are used to target group of elements, however, ids should be unique for each element. 
+
+Here is an example:
+
+"div" is a general markup for a block of text.
+
+```{r, eval=FALSE}
+<div class="items" id="myitem-1"></div>
+<div class="items" id="myitem-2"></div> 
+<div class="items" id="myitem-3"></div> 
+```
+
+Here we have multiple elements with the same HTML tag in your document. If we want to stylize each of them differently we can use the id attribute to target them.
+
+For instance, following CSS code will turn the text inside "myitem-" elements to the corresponding colors. To specify the Id `#` syntax is used before the id name.
+
+```{r, eval=FALSE}
+#myitem-1 {
+  color: blue;
+}
+
+#myitem-2 {
+  color: red;
+}
+
+#myitem-3 {
+  color: yellow;
+}
+```
+
+
+And if we want to target all three elements we can use the class attribute that each of these div tags share. To add style to all elements that are part of a particular class, you preface the class name with a period (.) in the CSS. For example to make all div tags with the `items` class blue:
+
+```{r, eval=FALSE}
+div.items {
+  color: blue;
+}
+```
+
+Thus, they are extensively used by CSS and Javascript to target an element for applying a custom style or giving a dynamic functionality.
+
+
+This is good to keep in mind since Shiny uses under the hood names and classes to specifically target an element or group of elements respectively, e.g. changing colors of some button/s.
+
+
+### Adding HTML & CSS Styles into an R Shiny App
+
+We can wrap any text that we want to modify in a Shiny app with an HTML tag. h3 tag defines a third level header in HTML. To make a text to have h3 style we need to wrap it inside the tag function e.g. h3() (or tags$h3()). We can use the style argument inside and HTML tag function to modify the style with CSS. We can include here as many as we would like CSS elements. Multiple arguments need to be separated with a `;`.
+
+Let's modify the titlePanel of our Sick Sicker app.
+
+Current version:
+
+```{r, eval=FALSE}
+library(shiny)
+titlePanel("Sick Sicker Model in Shiny")
+```
+
+Apply HTML h3 heading style:
+```{r}
+titlePanel( h3("Sick Sicker Model in Shiny"))
+```
+
+Apply HTML h3 heading style with `tags$` syntax:
+```{r}
+titlePanel(tags$h3("Sick Sicker Model in Shiny"))
+```
+
+We can apply CSS style to any text wrapped with an HTML tag by using the style argument as in the following:
+```{r}
+titlePanel( h3("Sick Sicker Model in Shiny", style = "color: #48ca3b;"))
+
+```
+
+To add multiple CSS arguments, separate each argument with `;`:
+```{r}
+titlePanel(h3("Sick Sicker Model in Shiny", style = "color: #48ca3b; background-color: #000000; text-align: center;"))
+```
+
+Adding an hyperlink: `<a> </a>` tag allows for adding a hyperlink to a text. `<a>` tag has other attributes such as href to point the address of the link. Set external=TRUE if it the link points to an external website.
+
+```{r}
+h2(a("An awesome tutorial", href = "https://r-hta.org/tutorial/markov_models_shiny/" , external=TRUE))
+```
+
+
+There are helper functions in Shiny that can call their equivalent HTML tags directly such as h3() we used above. Those are: 
+
+a(): creates a link
+br(): inserts a linebreak
+code(): for inserting a computer code
+div(): for a block of text
+em(): for italicing text
+h1() to h6(): for creating headers
+img(): allows to insert an Image
+p(): for paragraph
+pre(): for preformatted text
+span(): for an inline text
+strong(): for bold text
+
+For other HTML tags user has to use `tags$` syntax before the HTML tag. To see all the tags available to Shiny simply type `names(tags)` in R console. You can learn more about the most common tags in [Shiny HTML tags glossary.](https://shiny.rstudio.com/articles/tag-glossary.html)
+
+### Adding Raw HTML to Shiny
+
+It is also possible to add raw HTML to Shiny UI. HTML() function takes a character string and returns it as HTML (a special class of object in Shiny).
+
+With Shiny h3() function:
+```{r, eval = FALSE}
+titlePanel( h3("Sick Sicker Model in Shiny"))
+```
+
+With Raw HTML:
+```{r, eval = FALSE}
+titlePanel( HTML("<h3>Sick Sicker Model in Shiny</h3>"))
+```
+
+### More Customization examples
+
+I will add here more examples 
+e.g. modify appearance of boxes etc.
+
+### Shiny packages to modify the themes
+
+Can be included.
+
+## How to wrap up Shiny apps using electron
+
+
+## Sharing a Shiny app with Docker
+
+You can share your Shiny apps easily by hosting them on commercial platforms such as [RStudio](https://shiny.rstudio.com/deploy/) or with some additional effort by setting up and managing your own servers. When you don't have access to a Shiny server or you have sensitive data that you don't want to store online you have another alternative Docker. 
+
+Docker allows people who does not have programming skills to run your app in their local computers. You can make your health economic models shareable as well as ensure them to work in any other computer (e.g windows, mac or linux). 
+Docker enables you to pack in all the components required to run your Shiny or any other application, with all code, dependencies and the server. 
+
+![Docker vs VM (source: www.docker.com)](_bookdown_files/bookdown-demo_files/figures-shiny/docker_vs_vm.PNG)
+
+Unlike a virtual machine, in Docker the containers running share the host OS kernel. A Dockerized application is just a process that runs on your system. It doesn't require running a Hypervisor (such as VMWare or VirtualBox). Thus, Docker uses much less resources of the operating system. 
+
+Two concepts is very confusing at the beginning for people who don't know about Docker. So let's explain them.
+
+**Docker Image vs Docker Container**
+
+Docker Image:
+
+A Docker image is a non-changeable file containing libraries, source code, tools and other files needed to run applications.
+
+Docker Container: 
+
+Container is a running instance of a docker image. In context of a Shiny app, this will be the running instance of a Shiny app. With an anology, we can think of Docker Image as a digital photograph and Docker Container is a print of this digital image.
+
+
+
+### How to Dockerize your shinyApp?
+
+First, you need to [download](https://www.docker.com/get-started) Docker Desktop (either for mac or windows) and go through a tutorial [here.](https://ropenscilabs.github.io/r-docker-tutorial/) After installing Docker, you will need to set up a folder where your app and a couple of other files we need will be stored.
+
+### Example: Dockerize the Sick Sicker app  
+
+Let's go through an example to see how to do it. The process starts with creating a Dockerfile. It is a text document that contains all the instructions for Docker to pack all the necessary components for running your applications. 
+The following is the Dockerfile we will use to create a Docker image of the Sick Sicker app. This file should be named as `Dockerfile`.
+
+```{r eval=FALSE, include=TRUE}
+# Install R version 3.6
+FROM r-base:3.6.0
+
+# Install Ubuntu packages
+RUN apt-get update && apt-get install -y \
+    sudo \
+    gdebi-core \
+    pandoc \
+    pandoc-citeproc \
+    libcurl4-gnutls-dev \
+    libcairo2-dev/unstable \
+    libxt-dev \
+    libssl-dev
+
+# Download and install ShinyServer (latest version)
+RUN wget --no-verbose https://s3.amazonaws.com/rstudio-shiny-server-os-build/ubuntu-12.04/x86_64/VERSION -O "version.txt" && \
+    VERSION=$(cat version.txt)  && \
+    wget --no-verbose "https://s3.amazonaws.com/rstudio-shiny-server-os-build/ubuntu-12.04/x86_64/shiny-server-$VERSION-amd64.deb" -O ss-latest.deb && \
+    gdebi -n ss-latest.deb && \
+    rm -f version.txt ss-latest.deb
+
+# Install R packages that are required for the app
+# Specify further packages if you need!
+RUN R -e "install.packages('shiny', repos='http://cran.rstudio.com/')"
+RUN R -e "install.packages('truncnorm', repos='http://cran.rstudio.com/')"
+
+# Copy configuration files into the Docker image
+COPY shiny-server.conf  /etc/shiny-server/shiny-server.conf
+COPY /app /srv/shiny-server/
+
+# Make the ShinyApp available at port 3838
+EXPOSE 3838
+
+# Copy further configuration files into the Docker image
+COPY shiny-server.sh /usr/bin/shiny-server.sh
+
+CMD ["/usr/bin/shiny-server.sh"]
+```
+
+Let's break down these set of commands to look at what they are doing. 
+
+
+This will install the R version 3.6.0 image file. 
+
+```{r eval=FALSE, include=TRUE}
+FROM r-base:3.6.0
+```
+
+Below commands will install all the necessary linux components required to run a Shiny Server. 
+
+```{r eval=FALSE, include=TRUE}
+RUN apt-get update && apt-get install -y \
+    sudo \
+    gdebi-core \
+    pandoc \
+    pandoc-citeproc \
+    libcurl4-gnutls-dev \
+    libcairo2-dev/unstable \
+    libxt-dev \
+    libssl-dev
+```
+
+Then, we will run some other commands to install Shiny Server.
+
+```{r eval=FALSE, include=TRUE}
+RUN wget --no-verbose https://s3.amazonaws.com/rstudio-shiny-server-os-build/ubuntu-12.04/x86_64/VERSION -O "version.txt" && \
+    VERSION=$(cat version.txt)  && \
+    wget --no-verbose "https://s3.amazonaws.com/rstudio-shiny-server-os-build/ubuntu-12.04/x86_64/shiny-server-$VERSION-amd64.deb" -O ss-latest.deb && \
+    gdebi -n ss-latest.deb && \
+    rm -f version.txt ss-latest.deb
+```
+
+Following lines will instruct Docker to download the specified R packages. In our case, we only need shiny and truncnorm packages.
+
+```{r eval=FALSE, include=TRUE}
+RUN R -e "install.packages('shiny', repos='http://cran.rstudio.com/')"
+RUN R -e "install.packages('truncnorm', repos='http://cran.rstudio.com/')"
+```
+
+If you want always to use a fixed version of a package (e.g Shiny) you can set this by pointing an archived .tar file as follows:
+
+```{r, eval=FALSE}
+RUN R -e "install.packages(pkgs='https://cran.r-project.org/src/contrib/Archive/shiny/shiny_1.4.0.1.tar.gz',repos=NULL,type='source')"
+```
+
+Next lines will copy the shiny-server configuration file and the app/ folder to the ubuntu shiny-server folder where the app will run (e.g. /etc/shiny-server/ folder).
+
+```{r eval=FALSE, include=TRUE}
+COPY shiny-server.conf  /etc/shiny-server/shiny-server.conf
+COPY /app /srv/shiny-server/
+```
+
+
+#### Shiny-server configuration file
+
+This file sets up the user for the shiny-server folder so that the app can run. Copy this file into the same directory as the Docker file and name as shiny-server.conf. 
+
+```{r eval=FALSE}
+# Define the user we should use when spawning R Shiny processes
+run_as shiny;
+
+# Define a top-level server which will listen on a port
+server {
+  # Instruct this server to listen on port 3838
+  listen 3838;
+
+  # Define the location available at the base URL
+  location / {
+
+    # Run this location in 'site_dir' mode, which hosts the entire directory
+    # tree at '/srv/shiny-server'
+    site_dir /srv/shiny-server;
+    
+    # Define where we should put the log files for this location
+    log_dir /var/log/shiny-server;
+    
+    # Should we list the contents of a (non-Shiny-App) directory when the user 
+    # visits the corresponding URL?
+    directory_index on;
+  }
+}
+
+```
+
+Create an additional file with the following name Shiny-server.sh and place in the same folder as the Dockerfile.
+
+```{r, eval=FALSE}
+#!/bin/sh
+
+# Make sure the directory for individual app logs exists
+mkdir -p /var/log/shiny-server
+chown shiny.shiny /var/log/shiny-server
+
+exec shiny-server >> /var/log/shiny-server.log 2>&1
+```
+
+The commands on this file gives shiny user ownership of the shiny-server folder so that the user can run the app.
+
+At this step the Docker folder should look like this. 
+
+![ScreenPrint of Sick Sicker Docker folder](/_bookdown_files/bookdown-demo_files/figures-shiny/docker_sicksicker_screenclip.PNG)
+
+
+**Build a docker image of your app**
+
+Then we will move to Command Prompt (Windows) or Mac (Terminal) and change directory to the folder where our Dockerfile is and run the following commands:
+
+```{r, eval= FALSE}
+# This will build the docker image
+docker build -t my-shiny-app .
+```
+
+You can use the name you wish by switching it with `my-shiny-app`. This will begin the creation of the Docker image using your Dockerfile as instructions. At this step, Docker will download all the necessary components for your app and build an image that you can already share with other users. 
+
+
+**Create a container**
+
+```{r, eval= FALSE}
+# This will start a container running an instance of the docker image
+docker run --rm -p 3838:3838 my-shiny-app
+```
+
+This will create a container of your app from the Docker image file. You can switch to Docker desktop app and click Open in Browser button to view it on the browser at port 3838.
+
+
+![Docker Desktop ready for viewing the app](/_bookdown_files/bookdown-demo_files/figures-shiny/dockerdesktop_clickrun.PNG)
+
+Now, Sick Sicker app is running on local host 3838.
+
+![Sick Sicker running on localhost](/_bookdown_files/bookdown-demo_files/figures-shiny/sicksicker_localhost.PNG)
+
+Once you have created a Docker Image of a Shiny app, you can send that image to someone else as a .tar file or through the Docker hub. They will be able run the application exactly like yours. 
+
+If an application works on your local computer, this means it will work on any other machine that has Docker Desktop installed. This ensures any user can run your Shiny application without a need install programs or libraries. They just need to have Docker Desktop installed and run two lines of script on a terminal. Docker images are immutable, this means once created, they will always work. 
+
+
+### Saving Docker image
+
+After building the Docker image with `docker build -t my-shiny-app .` command we can also save a .tar file of the image for sharing with other people. The following fill create a .tar file of the Docker image inside our original Docker folder.
+
+```{r,eval=FALSE}
+docker save my-shiny-app > myshinyapp.tar
+```
+
+This will create the myshinyapp.tar in the same folder we started with. Now, we can share the myshinyapp.tar with someone else and he/she will be able to run the app easily independent of the operating system they use. Here, the total size of the myshinyapp.tar file was about 1.7GB.
+
+To start an application from this .tar file we need to load the Docker image in terminal as follows:
+```{r, eval=FALSE}
+docker load < myshinyapp.tar
+# And start the container
+docker run --rm -p 3838:3838 my-shiny-app
+```
+
+The Docker Image folder we used can be found here (links to be added).
+
+### How to share Docker Images via Docker hub
+
+To be added. 
+
+### Other Useful Shiny packages
+
+To be added.
