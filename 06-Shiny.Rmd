@@ -8,14 +8,12 @@ Robert Smith^1^ & Paul Schneider^1^
 *Corresponding Author: Robert Smith - rasmith3@sheffield.ac.uk*
 \endgroup
 
-This chapter follows a publication currently under open peer review at [Wellcome Open Research](https://wellcomeopenresearch.org/articles/5-69). 
+This chapter begins by following the methods described in a peer-reviewed publication by Rob & Paul in [Wellcome Open Research](https://wellcomeopenresearch.org/articles/5-69). It then goes on to provide an extended tutorial with material not included in the publication which may be of interest to those creating more advanced, customised applications. This section is authored by Robert Smith & Serdar Korur.
 
-To cite this publication use the following citation:
-Smith R and Schneider P. Making health economic models Shiny: A tutorial. Wellcome Open Res 2020, 5:69.
+All code and a working version of the described application are available within the following open access repository: [https://github.com/RobertASmith/paper_makeHEshiny](https://github.com/RobertASmith/paper_makeHEshiny).
 
-More detail is available on the following open access repository: [https://github.com/RobertASmith/paper_makeHEshiny](https://github.com/RobertASmith/paper_makeHEshiny)
-
-## Abstract
+## Shiny for Health Economic Evaluation
+### Abstract
 
 Health economic evaluation models have traditionally been built in Microsoft Excel, but more sophisticated tools are increasingly being used as model complexity and computational requirements increase. Of all the programming languages, R is most popular amongst health economists because it has a plethora of user-created packages and is highly flexible. However, even with an integrated development environments (e.g. R-Studio), R lacks a simple point-and-click user interface and therefore requires some programming ability. This might make the switch from Microsoft Excel to R seem daunting, and it might make it difficult to directly communicate results with decisions makers and other stakeholders.
 
@@ -25,7 +23,7 @@ The R package Shiny has the potential to resolve this limitation. It allows prog
 A more extensive tutorial, all code, and data are provided in a GitHub repository: [https://robertasmith.github.io/healthecon_shiny/](https://robertasmith.github.io/healthecon_shiny/).
 
 
-## Introduction
+### Introduction
   
 As the complexity of health economic models increase, there is growing recognition of the advantages of using high level programming languages to support statistical analysis (e.g. R, Python, C++, Julia). Depending on the model that is being used, Microsoft Excel can be relatively slow. Certain types of models (e.g. individual-level simulations) can take a very long time to run or become computationally infeasible, and some essential statistical methods can hardly be implemented at all (e.g. survival modelling, network meta analysis, value of sample information), and rely on exporting results from other programs (e.g. R, STATA, WinBUGs).
 
@@ -44,7 +42,7 @@ Several authors have postulated that there is considerable potential in using Sh
 
 Here, we provide a simple example of a Shiny web app, using a general 4-state Markov model. The model is based on the 'Sick-Sicker model', which has been described in detail in previous publications (@alarid2019need; @alarid2020cohort) and in open source teaching materials by the DARTH workgroup [@DARTH]. The model was slightly adapted to implement probabilistic sensitivity analysis.
 
-## Methods
+### Methods
 
 While the focus of this tutorial is on the application of Shiny for health economic models, below we provide a brief overview of the "Sick-Sicker model". For further details, readers are encouraged to consult @alarid2019need, @alarid2020cohort, @krijkamp2018microsimulation and the DARTH group website [@DARTH].
 
@@ -52,9 +50,9 @@ The Sick-Sicker model is a 4 state (Healthy, Sick, Sicker or Dead) Markov model.
 
 The analysis incorporates probabilistic sensitivity analysis (PSA) by creating a data-frame of PSA inputs (one row being one set of model inputs) based on cost, utility and probability distributions using the function *f_gen_psa* and then running the model with each set of PSA inputs using the model function *f_MM_sicksicker*. We therefore begin by describing the two functions *f_gen_psa* and *f_MM_sicksicker* in more detail before moving on to demonstrate how to create a user-interface. Note that we add to the coding framework from Alarid-Escudero et al., (2019) to use the *f_* prefix for functions.
 
-### Functions
+#### Functions
 
-#### Creating PSA inputs.
+##### Creating PSA inputs.
 
 The f_gen_psa function returns a data-frame of probabilistic sensitivity analysis inputs: transition probabilities between health states using a beta distribution, hazard rates using a log-normal distribution, costs using a gamma distribution and utilities using a truncnormal distribution. It relies on two inputs, the number of simulations (PSA inputs), and the cost (which takes a fixed value). We set the defaults to 1000 and 50 respectively.
 
@@ -94,7 +92,7 @@ f_gen_psa <- function(n_sim = 1000, c_Trt = 50){
 
 ```
 
-#### Running the model for a specific set of PSA inputs
+##### Running the model for a specific set of PSA inputs
 The function *f_MM_sicksicker* makes use of the *with* function which applies an expression (in this case the rest of the code) to a dataset (in this case params, which will be a row of PSA-inputs). It uses the params (one row of PSA inputs) to create a transition probability matrix *m_P*, and then moves the cohort through the simulation one cycle at a time, recording the proportions in each health state in a markov trace *m_TR* and applying the transition matrix to calculate the proportions in each health state in the next period *m_TR[t+1,]*. The function returns a vector of five results: Cost with no treatment, Cost with treatment, QALYs with no treatment and QALYs with treatment and an ICER. In this simple example treatment only influences utilities and costs, not transition probabilities
 
 ```{r echo = T, eval = F}
@@ -181,7 +179,7 @@ f_MM_sicksicker <- function(params) {
 }
 ```
 
-### Creating the model wrapper
+#### Creating the model wrapper
 
 When using a web application it is likely that the user will want to be able to change parameter inputs and re-run the model. In order to make this simple, we recommend wrapping the entire model into a function. We call this function *f_wrapper*, using the prefix *f_* to denote that this is a function.
 
@@ -246,7 +244,7 @@ f_wrapper <- function(
 
 ```
 
-### Integrating into R-Shiny
+#### Integrating into R-Shiny
 
 The method so far has involved wrapping the model into a function, which takes some inputs and returns a single data-frame output. The next step is to integrate the model function into a Shiny web-app. This is done within a single R file, which we call *app.R*. This can be found here: [https://github.com/RobertASmith/healthecon_shiny/tree/master/App](https://github.com/RobertASmith/healthecon_shiny/tree/master/App).
 
@@ -259,7 +257,7 @@ As shown in Figure 1 below, the parameters which are varied in the user interfac
 
 ![Diagram depecting how the code for the Sick-Sicker app is structured](_bookdown_files/bookdown-demo_files/figures-shiny/shiny_function_app.PNG)
 
-#### Set-up
+##### Set-up
 
 The set-up is relatively simple, load the R-Shiny package from your library so that you can use the *shinyApp* function. The next step is to use the *source* function in baseR to run the script which creates the *f_wrapper* function, being careful to ensure your relative path is correct ('./wrapper.R' should work if the app.R file is within the same folder). The function *shinyApp* at the end of the app file is reliant on the *shiny* package so please ensure that the *shiny* package is installed, using *install.packages("shiny")* if it is not. 
 
@@ -274,7 +272,7 @@ source("./wrapper.R")
 
 ```
 
-#### User Interface
+##### User Interface
 
 The user interface is extremely flexible, we show the code for a very simple structure (fluidpage) with a sidebar containing inputs and a main panel containing outputs. We have done very little formatting in order to minimize the quantity of code while maintaining basic functionality. In order to get an aesthetically pleasing application we recommend much more sophisticated formatting, relying on CSS, HTML and Javascript.
 
@@ -349,7 +347,7 @@ ui <- fluidPage(    # creates empty page, which we will fill
 
 ```
 
-#### Server
+##### Server
 
 The server is marginally more complicated than the user interface. It is created by a function with inputs and outputs. The observe event indicates that when the action button (run_model) is pressed the code within the curly brackets is run. The code will be re-run if the button is pressed again. 
 
@@ -433,7 +431,7 @@ server <- function(input, output){   # server = function with two inputs
   
 ```  
 
-#### Running the app
+##### Running the app
 The app can be run within the R file using the function *shinyApp* which depends on the *ui* and *server* which have been created and described above. Running this creates a Shiny application in the local environment (e.g. your desktop). In order to deploy the application onto the web the app needs to be *published* using the publish button in the top right corner of the R-file in RStudio (next to run-app). A step by step guide to this process can be found on the R-Shiny website [https://shiny.rstudio.com/deploy/](https://shiny.rstudio.com/deploy/). 
 
 ```{r, echo = T, eval = F}
@@ -442,7 +440,7 @@ The app can be run within the R file using the function *shinyApp* which depends
 shinyApp(ui, server)
 ```
 
-#### Additional Functionality
+##### Additional Functionality
 
 The example Sick-Sicker web-app which has been created is a simple, but functional, R-Shiny user interface for a health economic model. There are a number of additional functionalities which we have used for various projects:
 
@@ -459,7 +457,7 @@ The example Sick-Sicker web-app which has been created is a simple, but function
 It is also possible to integrate network meta-analysis (NMA), the economic model, and value of information analysis (VOI) in a single application. After selecting NMA inputs (e.g. a subgroup of effectiveness studies) and economic model inputs (e.g. costs of treatments) and then clicking the 'run' button, a user would be presented with results of the NMA, economic model and VOI in one simple user-interface. They would then be able to download a report with all of the relevant information updated (e.g. numbers, tables, figures). We believe this is the future of health economics.
 
 
-## Discussion
+### Discussion
 
 In this paper, we demonstrated how to generate a user-friendly interface for an economic model programed in R, using the Shiny package. This tutorial shows that the process is relatively simple and requires limited additional programming knowledge than that required to build a decision model in R.
 
@@ -469,11 +467,32 @@ The authors' experience of creating user-interfaces for decision models has led 
 
 There are several challenges that exist with the movement toward script based models with web-based user-interfaces. The first is the challenge of upskilling health economists used to working in Microsoft Excel. We hope that this tutorial provides a useful addition to previous tutorials demonstrating how to construct decsion models in R [@alarid2020cohort]. A second, and crucial challenge to overcome, is a concern about deploying highly sensitive data and methods to an external server. While server providers such as ShinyIO provide assurances of SSR encryption and user authentication clients with particularly sensitive data may still have concerns. This problem can be avoided in two ways: firstly if clients have their own server and the ability to deploy applications they can maintain control of all data and code, and secondly the application could simply not be deployed, and instead simply created during a meeting using code and data shared in a zip file. Finally, a challenge (and opportunity) exists to create user-interfaces that are most user-friendly for decision makers in this field, this is an area of important research which can be used to inform teaching content for years to come.
 
-## Conclusion
+### Conclusion
 
 The creation of web application user interfaces for health economic models constructed in high level programming languages should improve their usability, allowing stakeholders and third parties with no programming knowledge to conduct their own sensitivity analysis remotely. This tutorial provides a reference for those attempting to create a user interface for a health economic model created in R. Further work is necessary to better understand how to design interfaces which best meet the needs of different decision makers. 
 
-## Creating a downloadable report from Shiny (Serdar Korur)
+## Advanced Shiny for Health Economic Evaluation
+
+Robert Smith^1^, Serdar Korur^2^ & Paul Schneider^1^
+
+\begingroup\small
+*^1^ScHARR, University of Sheffield* 
+
+*^2^Dataatomic [dataatomic.com](https://dataatomic.com/)*
+
+The following section provides an extended tutorial on methods not included within the academic paper. This includes:
+
+* more detailed description of the probabilistic sensitivity analysis function in the paper.
+* methods to create downloadable reports based on parameter choices
+* self-contained (non-web-based) user applications
+* ability to email results after running a model within ShinyIO server.
+* customised appearance using HTML & CSS.
+* model input file upload (e.g. for network meta-analysis outputs used as health economic model inputs).
+* advanced ggplot and plotly functions for awesome visualisations.
+
+This section is less formal than the previous published section, please feel free to email the lead author (correspondence: rasmith3@sheffield.ac.uk) with any suggestions.
+
+### Creating a downloadable report from Shiny
 
 After making an analysis on a Shiny app users may want to create a report of their results with all the parameter values they used when creating their Health Economic model.
 
@@ -484,9 +503,9 @@ We will also need to create a separate rmd file, we may call it report.Rmd. In t
 
 Let's go through an example.
 
-### Add create a report option to the Sick Sicker App
+#### Add create a report option to the Sick Sicker App
 
-#### Modify the UI and Server in the app.R file
+##### Modify the UI and Server in the app.R file
 
 First, we can start with modifying the app.R file. We can define a download button at the UI and add a downloadhandler() at server side as follows:
 
@@ -531,7 +550,7 @@ First, we can start with modifying the app.R file. We can define a download butt
 
 In the next step, We will pass the parameters specified above by the`params` list to the Rmd document.
 
-#### Setting up the report.Rmd
+##### Setting up the report.Rmd
 When we run the modified app.R it will generate the list `params` at the server side and now we have to tell the rmd document how to access those variables. Parameters that will be passed from Shiny should be specified in the YAML header (top section between three horizontal lines `---` of the rmd document and should be with two indentation from the beginning of a new line and initally set to `NA` as below.
 
 ```{r, eval=FALSE}
@@ -651,18 +670,18 @@ Now, let's have a look at the final report.
 Additional parameters to be written on the report can be added to the YAML header of the report.rmd.  For example, you can include the time when the report is created. Use !r before an R expression to pass it as a parameter to the report (e.g date: !r Sys.Date()).
 
 
-### Importing as PDF or Word
+#### Importing as PDF or Word
 
 Change the filename argument of downloadHandler() to "report.pdf" or "report.doc. Use output: pdf_document or output: word_document respectively in the YAML header of the Rmd file to get an pdf or word output. Creating a pdf report will also require `pdflatex` to be installed on your system.
 
 The rmarkdown::render() function has many options to control the processing and output. See the rmarkdown website to learn more <https://rmarkdown.rstudio.com/>.
 
-### Sending Scheduled Automated reports to be emailed to you from Shiny apps
+#### Sending Scheduled Automated reports to be emailed to you from Shiny apps
 
 Can be added.
 
 
-## Modify the appearance of Shiny apps
+### Modify the appearance of Shiny apps
 
 Shiny is a web application, thus to be interpreted by web browsers it uses the languages of the web, such as HTML (HyperText Markup Language) which is the basic building block of Web pages, CSS (Cascading Styles Sheets) which adds a wide variety of formating options to style HTML elements and Javascript which allows for dynamic options of a web page such as user interactivity.  
 
@@ -671,7 +690,7 @@ Shiny UI Code is a set of R functions that output an HTML document along with th
 Thus, understanding some basics of HTML, CSS and Javascript will allow us to customize our apps.
 
 
-### Basic introduction to HTML and CSS 
+#### Basic introduction to HTML and CSS 
 
 An HTML document is a collection of tags which is interpreted by the web browser step by step.
 
@@ -704,7 +723,7 @@ Each of the `<.>` is called a tag. Text are wrapped between an opening and closi
 The opening and closing tag together forms an element. For example, `<p>.</p>` is called the "p element".
 
 
-#### Tag attributes
+##### Tag attributes
 
 HTML Tags can also include attributes. Attributes are name/value pair and the general syntax is
 
@@ -757,7 +776,7 @@ Thus, they are extensively used by CSS and Javascript to target an element for a
 This is good to keep in mind since Shiny uses under the hood names and classes to specifically target an element or group of elements respectively, e.g. changing colors of some button/s.
 
 
-### Adding HTML & CSS Styles into an R Shiny App
+#### Adding HTML & CSS Styles into an R Shiny App
 
 We can wrap any text that we want to modify in a Shiny app with an HTML tag. h3 tag defines a third level header in HTML. To make a text to have h3 style we need to wrap it inside the tag function e.g. h3() (or tags$h3()). We can use the style argument inside and HTML tag function to modify the style with CSS. We can include here as many as we would like CSS elements. Multiple arguments need to be separated with a `;`.
 
@@ -771,29 +790,29 @@ titlePanel("Sick Sicker Model in Shiny")
 ```
 
 Apply HTML h3 heading style:
-```{r}
+```{r, eval=FALSE}
 titlePanel( h3("Sick Sicker Model in Shiny"))
 ```
 
 Apply HTML h3 heading style with `tags$` syntax:
-```{r}
+```{r, eval=FALSE}
 titlePanel(tags$h3("Sick Sicker Model in Shiny"))
 ```
 
 We can apply CSS style to any text wrapped with an HTML tag by using the style argument as in the following:
-```{r}
+```{r, eval=FALSE}
 titlePanel( h3("Sick Sicker Model in Shiny", style = "color: #48ca3b;"))
 
 ```
 
 To add multiple CSS arguments, separate each argument with `;`:
-```{r}
+```{r, eval=FALSE}
 titlePanel(h3("Sick Sicker Model in Shiny", style = "color: #48ca3b; background-color: #000000; text-align: center;"))
 ```
 
 Adding an hyperlink: `<a> </a>` tag allows for adding a hyperlink to a text. `<a>` tag has other attributes such as href to point the address of the link. Set external=TRUE if it the link points to an external website.
 
-```{r}
+```{r, eval=FALSE}
 h2(a("An awesome tutorial", href = "https://r-hta.org/tutorial/markov_models_shiny/" , external=TRUE))
 ```
 
@@ -814,7 +833,7 @@ strong(): for bold text
 
 For other HTML tags user has to use `tags$` syntax before the HTML tag. To see all the tags available to Shiny simply type `names(tags)` in R console. You can learn more about the most common tags in [Shiny HTML tags glossary.](https://shiny.rstudio.com/articles/tag-glossary.html)
 
-### Adding Raw HTML to Shiny
+#### Adding Raw HTML to Shiny
 
 It is also possible to add raw HTML to Shiny UI. HTML() function takes a character string and returns it as HTML (a special class of object in Shiny).
 
@@ -828,19 +847,19 @@ With Raw HTML:
 titlePanel( HTML("<h3>Sick Sicker Model in Shiny</h3>"))
 ```
 
-### More Customization examples
+#### More Customization examples
 
 I will add here more examples 
 e.g. modify appearance of boxes etc.
 
-### Shiny packages to modify the themes
+#### Shiny packages to modify the themes
 
 Can be included.
 
-## How to wrap up Shiny apps using electron
+### How to wrap up Shiny apps using electron
 
 
-## Sharing a Shiny app with Docker
+### Sharing a Shiny app with Docker
 
 You can share your Shiny apps easily by hosting them on commercial platforms such as [RStudio](https://shiny.rstudio.com/deploy/) or with some additional effort by setting up and managing your own servers. When you don't have access to a Shiny server or you have sensitive data that you don't want to store online you have another alternative Docker. 
 
@@ -865,11 +884,11 @@ Container is a running instance of a docker image. In context of a Shiny app, th
 
 
 
-### How to Dockerize your shinyApp?
+#### How to Dockerize your shinyApp?
 
 First, you need to [download](https://www.docker.com/get-started) Docker Desktop (either for mac or windows) and go through a tutorial [here.](https://ropenscilabs.github.io/r-docker-tutorial/) After installing Docker, you will need to set up a folder where your app and a couple of other files we need will be stored.
 
-### Example: Dockerize the Sick Sicker app  
+#### Example: Dockerize the Sick Sicker app  
 
 Let's go through an example to see how to do it. The process starts with creating a Dockerfile. It is a text document that contains all the instructions for Docker to pack all the necessary components for running your applications. 
 The following is the Dockerfile we will use to create a Docker image of the Sick Sicker app. This file should be named as `Dockerfile`.
@@ -968,7 +987,7 @@ COPY /app /srv/shiny-server/
 ```
 
 
-#### Shiny-server configuration file
+##### Shiny-server configuration file
 
 This file sets up the user for the shiny-server folder so that the app can run. Copy this file into the same directory as the Docker file and name as shiny-server.conf. 
 
@@ -1051,7 +1070,7 @@ Once you have created a Docker Image of a Shiny app, you can send that image to 
 If an application works on your local computer, this means it will work on any other machine that has Docker Desktop installed. This ensures any user can run your Shiny application without a need install programs or libraries. They just need to have Docker Desktop installed and run two lines of script on a terminal. Docker images are immutable, this means once created, they will always work. 
 
 
-### Saving Docker image
+#### Saving Docker image
 
 After building the Docker image with `docker build -t my-shiny-app .` command we can also save a .tar file of the image for sharing with other people. The following fill create a .tar file of the Docker image inside our original Docker folder.
 
@@ -1070,10 +1089,10 @@ docker run --rm -p 3838:3838 my-shiny-app
 
 The Docker Image folder we used can be found here (links to be added).
 
-### How to share Docker Images via Docker hub
+#### How to share Docker Images via Docker hub
 
 To be added. 
 
-### Other Useful Shiny packages
+#### Other Useful Shiny packages
 
 To be added.
